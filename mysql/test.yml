@@ -1,0 +1,24 @@
+- name: Install mysql on euleros
+  hosts: mysql_hosts
+  become: true
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: change master to
+      mysql_replication:
+        mode: changeprimary
+        master_host: "{{ mysql_master }}"
+        master_user: "{{ mysql_repl_user }}"
+        master_password: "{{ mysql_repl_password }}"
+        master_auto_position: yes
+        login_user: root
+        login_password: "{{ root_password }}"
+        login_unix_socket: "{{ mysql_dir }}/mysql.sock"
+      when: mysql_role == 'slave'
+    - name: start slave
+      mysql_replication:
+        mode: startreplica
+        login_user: root
+        login_password: "{{ root_password }}"
+        login_unix_socket: "{{ mysql_dir }}/mysql.sock"
+      when: mysql_role == "slave"

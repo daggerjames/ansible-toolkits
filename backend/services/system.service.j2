@@ -1,0 +1,18 @@
+[Unit]
+Description=System Service
+After=syslog.target network.target
+
+[Service]
+SuccessExitStatus=143
+
+User=root
+Group=root
+
+Type=simple
+
+WorkingDirectory={{backend_dir}}
+ExecStart=java -jar yudao-module-system-biz.jar --spring.config.additional-location={{backend_dir}}/properties/
+ExecStop=/bin/kill -15 $MAINPID
+
+[Install]
+WantedBy=multi-user.target

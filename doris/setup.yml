@@ -1,0 +1,129 @@
+---
+- hosts: "doris_*"
+  remote_user: root
+  vars_files:
+    - ./conf/setup_vars.yml
+    - ./conf/cluster.yml
+  tasks:
+  - name: check doris_home exists
+    stat:
+      path: "{{ doris_home }}"
+    register: is_exists
+  - name: create target directory and untar
+    when: not is_exists.stat.exists
+    file:
+      path: "{{ doris_home }}"
+      state: directory
+  - name: decompress all Doris Software packages
+    when: not is_exists.stat.exists
+    unarchive:
+      src: "{{ playbook_dir }}/doris.tgz"
+      dest: "{{ doris_home }}"
+      extra_opts: ['--strip-components=1', '--show-stored-names']
+      copy: yes
+  - name: mkdir meta 
+    file: 
+      path: "{{ doris_home }}/fe/meta"
+      state: directory
+  - name: mkdir storage
+    file: 
+      path: "{{ doris_home }}/be/storage"
+      state: directory
+  - name: scp fe.conf 
+    copy: 
+      src: "{{ playbook_dir }}/conf/fe_conf/"
+      dest: "{{ doris_home }}/fe/conf/"
+      force: yes
+  - name: scp be.conf
+    copy: 
+      src: "{{ playbook_dir }}/conf/be_conf/"
+      dest: "{{ doris_home }}/be/conf/"
+      force: yes
+
+- hosts: "doris_master"
+  remote_user: root
+  vars_files: 
+    - ./conf/setup_vars.yml
+    - ./conf/cluster.yml
+  tasks:
+    # - name: module
+    #   shell: echo "priority_networks=x"
+    #   register: F
+    # - name: add fe.conf
+    #   lineinfile:
+    #     dest: "{{ fe_conf_path }}"
+    #     line: "{{ Fe.stdout | replace('x',feconf) }}"
+    - name: start master
+      shell:
+        cmd: 
+          sh {{ doris_home }}/fe/bin/start_fe.sh --daemon
+    - name: wait master started
+      local_action:
+        module: wait_for
+        delay: 5
+        sleep: 5
+        host: "{{ master }}"
+        port: "{{ query_port }}"
+    - name: register backends
+      local_action:
+        module: community.mysql.mysql_query
+        login_user: root
+        login_port: "{{ query_port }}"
+        login_host: "{{ master }}"
+        query:
+          - ALTER SYSTEM ADD BACKEND %s
+        positional_args:
+          - "{{ item }}:{{ heartbeat_service_port }}"
+      loop: "{{ backends }}"
+      run_once: true
+    
+
+# - hosts: "{{ cluster }}.follower"
+#   remote_user: root
+#   vars_files:
+#     - ../conf/setup_vars.yml
+#     - ../conf/{{ cluster }}.yml
+#   tasks:
+#     - name: module
+#       shell: echo "priority_networks=x"
+#       register: Fe
+#     - name: add fe.conf
+#       lineinfile:
+#         dest: "{{ fe_conf_path }}"
+#         line: "{{ Fe.stdout | replace('x',feconf) }}"
+#     - name: start follower
+#       shell:
+#         cmd: "sh {{ doris_home }}/fe/bin/start_fe.sh --helper {{ master }}:{{ edit_log_port }} --daemon"
+
+- hosts: "doris_backends"
+  remote_user: root
+  vars_files:
+    - ./conf/setup_vars.yml
+    - ./conf/cluster.yml
+  tasks:
+    # - name: module
+    #   shell: echo "priority_networks=x"
+    #   register: Be
+    # - name: add be.conf
+    #   lineinfile:
+    #     dest: "{{ be_conf_path }}"
+    #     line: "{{ Fe.stdout | replace('x',beconf) }}"
+    # 设置系统最大文件句柄数和内存区域数量
+    - name: "Fetch JAVA_HOME"
+      shell: dirname $(dirname $(readlink -f $(which java)))
+      register: java_home
+    - name: start all backends
+      shell:
+        cmd: "sh {{ doris_home }}/be/bin/start_be.sh --daemon"
+      environment:
+        JAVA_HOME: "{{ java_home.stdout }}"
+
+# - hosts: "{{ cluster }}.brokers"
+#   remote_user: root
+#   vars_files:
+#     - ../conf/setup_vars.yml
+#     - ../conf/{{ cluster }}.yml
+#   tasks:
+#     - name: start all brokers
+#       shell:
+#         cmd: "sh {{ doris_home }}/apache_hdfs_broker/bin/start_broker.sh --daemon"

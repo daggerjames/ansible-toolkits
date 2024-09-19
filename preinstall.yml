@@ -1,0 +1,51 @@
+- name: Install Docker on euleros
+  hosts: servers
+  become: true
+  tasks:
+    - name: Install required dependencies
+      yum:
+        name:
+          - docker
+          - java-11-openjdk-headless
+          - python3-libselinux
+        state: present
+      async: 1000
+      poll: 0
+      register: yum_sleeper
+
+    - name: Yum - check on async task
+      async_status:
+        jid: "{{ yum_sleeper.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 30
+    # disable selinux
+    - name: Disable selinux
+      ansible.posix.selinux:
+        state: disabled
+    # disable firewalld
+    - name: firewalld disabled
+      service:
+        name: firewalld
+        state: stopped
+        enabled: false
+    # disable swap
+    - name: Disable SWAP since doris can't work with swap enabled (1/2)
+      shell: |
+        swapoff -a
+    - name: Disable SWAP in fstab since doris can't work with swap enabled (2/2)
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+    # disable swap
+
+    # - name: Enable the Docker service
+    #   systemd:
+    #     name: docker
+    #     enabled: yes
+
+    # - name: Start the Docker service
+    #   systemd:
+    #     name: docker
+    #     state: started

@@ -1,0 +1,9 @@
+---
+mysql:
+  db_name: nacos_test
+  db_sql_path: mysql-schema.sql
+  user: nacos
+  password: nacos_passwd
+  master_ip_and_port: '192.168.10.233:3306'
+nacos_dir: /opt/toolkits/nacos
+nacos_version: 2.3.2

@@ -1,0 +1,42 @@
+- name: Install nacos
+  hosts: nacos_hosts[0]
+  become: true
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: find if we need download
+      stat:
+        path: "{{ nacos_dir }}"
+      register: is_exists
+    - name: check tmp dir exists
+      when: not is_exists.stat.exists
+      file:
+        path: "{{ nacos_dir }}"
+        state: directory
+    - name: check if locally we have nacos tar
+      when: not is_exists.stat.exists
+      local_action:
+        module: stat
+        path: "./nacos-server-{{nacos_version}}.zip"
+      register: is_tar_exists
+    - name: download locally
+      when: not is_exists.stat.exists and not is_tar_exists.stat.exists
+      local_action:
+        module: get_url
+        url: "https://download.nacos.io/nacos-server/nacos-server-{{nacos_version}}.zip"
+        dest: "./nacos-server-{{nacos_version}}.zip"
+    - name: Unarchive nacos
+      when: not is_exists.stat.exists
+      ansible.builtin.unarchive:
+        src: "./nacos-server-{{nacos_version}}.zip"
+        dest: "{{ nacos_dir }}"
+    - name: copy application.properties
+      template:
+        src: "application.properties.j2"
+        dest: "{{ nacos_dir }}/conf/application.properties"
+        force: true
+    - name: start standalone
+      shell:
+        cmd: sh bin/startup.sh -m standalone
+        chdir: "{{ nacos_dir }}"
+

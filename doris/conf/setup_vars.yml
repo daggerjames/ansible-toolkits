@@ -1,0 +1,6 @@
+---
+heartbeat_service_port: 9050
+edit_log_port: 9010
+query_port: 9030
+broker_ipc_port: 8000
+doris_home: /opt/toolkits/doris

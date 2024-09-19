@@ -1,0 +1,71 @@
+---
+- hosts: "toolkits_*_hosts"
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: check if source file exists
+      local_action:
+        module: stat
+        path: backend.tar.gz
+      register: is_exists
+      failed_when: not is_exists.stat.exists
+    - name: clean
+      ansible.builtin.file:
+        state: absent
+        path: "{{ backend_dir }}"
+      tags: clean
+    - name: check if we do not need unarchive
+      stat:
+        path: "{{ backend_dir }}"
+      register: dir_exists
+    - name: create dir
+      when: not dir_exists.stat.exists
+      file:
+        path: "{{ backend_dir }}"
+        state: directory
+    - name: distribution
+      when: not dir_exists.stat.exists
+      ansible.builtin.unarchive:
+        src: "backend.tar.gz"
+        dest: "{{ backend_dir }}"
+        extra_opts: ["--strip-components=1", "--show-stored-names"]
+    - name: create service link
+      file:
+        src: "{{backend_dir}}/services/{{ item | basename | regex_replace('\\.j2$', '') }}"
+        path: "/etc/systemd/system/{{ item | basename | regex_replace('\\.j2$', '') }}"
+        state: "link"
+      with_fileglob:
+        - "./services/*.j2"
+
+- hosts: "toolkits_gateway_hosts"
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: enabled & start
+      systemd:
+        name: "gateway"
+        state: started
+        enabled: true
+        daemon_reload: true
+
+- hosts: "toolkits_infra_hosts"
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: enabled & start
+      systemd:
+        name: "infra"
+        state: started
+        enabled: true
+        daemon_reload: true
+        
+- hosts: "toolkits_system_hosts"
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: enabled & start
+      systemd:
+        name: "system"
+        state: started
+        enabled: true
+        daemon_reload: true

@@ -1,0 +1,9 @@
+---
+tmp_mysql_dir: /tmp/mysql
+mysql_version: 8.0.29-1.el8.x86_64
+mysql_data_dir: /opt/toolkits/data/mysql
+mysql_dir: /opt/toolkits/mysql
+root_password: admin123
+mysql_repl_user: repl
+mysql_repl_password: repl
+mysql_master: 192.168.10.233

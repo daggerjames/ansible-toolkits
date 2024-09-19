@@ -1,0 +1,32 @@
+[servers]
+# target.com
+server1 ansible_ssh_host=192.168.10.001 ansbile_ssh_user="root"
+
+# mysql
+[mysql_hosts]
+server1 mysql_role=master   server_id=1
+server2 mysql_role=slave    server_id=2
+server3 mysql_role=slave    server_id=3
+
+# nacos
+[nacos_hosts]
+server1
+
+# redis
+[redis_hosts]
+server1
+
+# doris related
+[doris_master]
+
+[doris_followers]
+
+[doris_backends]
+
+[doris_brokers]
+
+[doris_scale_fe]
+
+[doris_scale_be]
+
+[doris_scale_brokers]

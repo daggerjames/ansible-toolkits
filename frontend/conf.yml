@@ -1,0 +1,10 @@
+---
+vite_base_url: 'http://192.168.10.233'
+frontend_nginx:
+  server_name: 192.168.10.233
+  port: 80
+gateway:
+  host: 192.168.10.232
+  port: 48080
+source_dir: /root/yudao-ui-admin-vue3
+frontend_dir: /opt/toolkits/frontend

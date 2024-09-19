@@ -1,0 +1,67 @@
+- name: Build Doris on data servers
+  hosts: 127.0.0.1
+  connection: local
+  become: true
+  tasks:
+    - name: check if docker started
+      systemd:
+        name: docker
+        state: started
+
+    - name: Install required python dependencies
+      ansible.builtin.pip:
+        name: requests
+        extra_args: -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+    # pull image
+    - name: Pull build image
+      community.docker.docker_image_pull:
+        name: apache/doris:build-env-for-2.0
+      async: 1000
+      poll: 0
+      register: image_pull_sleeper
+
+    - name: Check on Image Pull
+      async_status:
+        jid: "{{ image_pull_sleeper.ansible_job_id }}"
+      register: image_pull_result
+      until: image_pull_result.finished
+      retries: 15
+
+    - name: clone doris
+      ansible.builtin.git:
+        repo: <doris_repo>
+        dest: /build/doris-2.0
+        single_branch: yes
+        version: branch-2.0
+
+    - name: create cache directory for java
+      file:
+        path: /root/.m2
+        state: directory
+
+    # check output if build before
+    - name: check if output built
+      stat:
+        path: /build/doris-2.0/output
+      register: is_built
+
+    # build doris
+    - name: run a docker to build Doris
+      when: not is_built.stat.exists
+      community.docker.docker_container:
+        name: doris_builder
+        image: apache/doris:build-env-for-2.0
+        working_dir: /root/doris-branch-2.0
+        command: "sh build.sh"
+        detach: true
+        volumes:
+          - /root/.m2:/root/.m2
+          - /build/doris-2.0:/root/doris-branch-2.0
+
+    # output doris
+    - name: compress
+      when: is_built.stat.exists
+      archive:
+        path: /build/doris-2.0/output
+        dest: "{{ playbook_dir }}/doris.tgz"

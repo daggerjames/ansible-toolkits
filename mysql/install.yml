@@ -1,0 +1,124 @@
+- name: Install mysql on euleros
+  hosts: mysql_hosts
+  become: true
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: Install mysql-python
+      pip:
+        name:
+          - PyMySQL
+        extra_args: -i https://pypi.tuna.tsinghua.edu.cn/simple
+        executable: pip3
+    - name: find if we need download
+      stat:
+        path: "{{ tmp_mysql_dir }}"
+      register: is_exists
+    - name: check tmp dir exists
+      when: not is_exists.stat.exists
+      file:
+        path: /tmp/mysql
+        state: directory
+    - name: check if locally we have mysql tar
+      when: not is_exists.stat.exists
+      local_action:
+        module: stat
+        path: "./mysql-{{ mysql_version }}.rpm-bundle.tar"
+      register: is_tar_exists
+    - name: download locally
+      when: not is_exists.stat.exists and not is_tar_exists.stat.exists
+      local_action:
+        module: get_url
+        url: "https://mirrors.huaweicloud.com/mysql/Downloads/MySQL-8.0/mysql-{{ mysql_version }}.rpm-bundle.tar"
+        checksum: "md5:https://mirrors.huaweicloud.com/mysql/Downloads/MySQL-8.0/mysql-{{ mysql_version }}.rpm-bundle.tar.md5"
+        dest: "./mysql-{{ mysql_version }}.rpm-bundle.tar"
+    - name: Unarchive mysql rpm from huawei
+      when: not is_exists.stat.exists
+      ansible.builtin.unarchive:
+        src: "./mysql-{{ mysql_version }}.rpm-bundle.tar"
+        dest: /tmp/mysql
+    - name: installed locally
+      yum:
+        disable_gpg_check: yes
+        name:
+          - "/tmp/mysql/mysql-community-common-{{ mysql_version }}.rpm"
+          - "/tmp/mysql/mysql-community-client-plugins-{{ mysql_version }}.rpm"
+          - "/tmp/mysql/mysql-community-libs-{{ mysql_version }}.rpm"
+          - "/tmp/mysql/mysql-community-client-{{ mysql_version }}.rpm"
+          - "/tmp/mysql/mysql-community-icu-data-files-{{ mysql_version }}.rpm"
+          - "/tmp/mysql/mysql-community-server-{{ mysql_version }}.rpm"
+        state: present
+     # 默认不修改 my.cnf位置，以保证默认的systemd可以使用
+    - name: copy global my.cnf
+      template:
+        src: "my.conf.j2"
+        dest: "/etc/my.cnf"
+        mode: '0644'
+        owner: mysql
+        group: mysql
+    - name: 数据文件夹确认
+      file:
+        path: "{{ mysql_dir }}"
+        state: directory
+        mode: '0755'
+        owner: mysql
+        group: mysql
+    - name: 创建默认配置文件的链接以方便后期查看
+      file:
+        src: "/etc/my.cnf"
+        path: "{{ mysql_dir }}/my.cnf"
+        state: "link"
+        owner: mysql
+        group: mysql
+    - name: 数据库初始化 8.0.33
+      ansible.builtin.command:
+        cmd: "mysqld --no-defaults -u mysql  --console --datadir={{ mysql_data_dir }} --initialize"
+      register: mysql_initialize_output
+      changed_when: false
+    - name: debug output
+      debug:
+        msg: "{{ mysql_initialize_output }}"
+    - name: Extract the temporary password
+      ansible.builtin.set_fact:
+        temp_password: "{{ mysql_initialize_output.stderr_lines[-1] | regex_search('temporary password(.*): \\s*(.*)', '\\2') }}"
+    - name: Print the password
+      ansible.builtin.debug:
+        var: temp_password
+    - name: Enable the mysql service
+      systemd:
+        name: mysqld
+        enabled: yes
+    - name: Start the mysql service
+      systemd:
+        name: mysqld
+        state: started
+    - name: change password as desired
+      shell: "mysqladmin -S {{ mysql_dir }}/mysql.sock -u root -p{{ temp_password[0] | quote }} password {{ root_password | quote}}"
+    - name: create repl user
+      community.mysql.mysql_user:
+        name: "{{ mysql_repl_user }}"
+        host: "%"
+        password: "{{ mysql_repl_password }}"
+        priv: "*.*:REPLICATION SLAVE"
+        state: present
+        login_user: root
+        login_password: "{{ root_password }}"
+        login_unix_socket: "{{ mysql_dir }}/mysql.sock"
+      when: mysql_role == 'master'
+    - name: change master to
+      mysql_replication:
+        mode: changemaster
+        master_host: "{{ mysql_master }}"
+        master_user: "{{ mysql_repl_user }}"
+        master_password: "{{ mysql_repl_password }}"
+        master_auto_position: yes
+        login_user: root
+        login_password: "{{ root_password }}"
+      when: mysql_role == 'slave'
+    - name: start slave
+      mysql_replication:
+        mode: startslave
+        login_user: root
+        login_password: "{{ root_password }}"
+      when: mysql_role == "slave"
+

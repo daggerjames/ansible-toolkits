@@ -1,0 +1,55 @@
+---
+- name: Create initial database
+  hosts: mysql_hosts[0]
+  become: true
+  vars_files:
+    - ./conf.yml
+    - ../mysql/conf.yml
+  tasks:
+    - name: copy init sql to remote
+      copy:
+        src: "{{mysql.db_sql_path}}"
+        dest: /tmp/import.sql
+    - name: Create a new database with name
+      community.mysql.mysql_db:
+        name: "{{mysql.db_name}}"
+        state: present
+        login_user: root
+        login_password: "{{ root_password }}"
+        login_unix_socket: "{{ mysql_dir }}/mysql.sock"
+    - name: import data
+      community.mysql.mysql_db:
+        name: "{{mysql.db_name}}"
+        state: import
+        login_user: root
+        login_password: "{{ root_password }}"
+        login_unix_socket: "{{ mysql_dir }}/mysql.sock"
+        target: /tmp/import.sql
+    - name: create a new user and grant access
+      community.mysql.mysql_user:
+        state: present
+        name: "{{mysql.user}}"
+        password: "{{mysql.password}}"
+        host: '%'
+        priv: "{{mysql.db_name}}.*:ALL,GRANT"
+        login_user: root
+        login_password: "{{ root_password }}"
+        login_unix_socket: "{{ mysql_dir }}/mysql.sock"
+
+- name: create nacos namespace
+  hosts: 127.0.0.1
+  connection: local
+  become: true
+  vars_files:
+    - ./conf.yml
+    - ../nacos/conf.yml
+  tasks:
+    - name: create namespace
+      uri:
+        url: "http://{{nacos.host}}:{{nacos.port}}/nacos/v1/console/namespaces"
+        method: POST
+        body: "customNamespaceId=dev&namespaceName=dev&namespaceDesc="
+      register: nsCreate
+    - name: debug result
+      debug:
+        msg: "{{ nsCreate }}"

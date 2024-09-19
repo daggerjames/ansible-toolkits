@@ -1,0 +1,26 @@
+---
+- name: build frontend
+  hosts: 127.0.0.1
+  connection: local
+  become: true
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: update .env.prod
+      template:
+        src: ".env.prod.j2"
+        dest: "{{ source_dir }}/.env.prod"
+    # clone directory use mvn install
+    - name: Running npm run build
+      shell:
+        cmd: npm run build:prod
+        chdir: "{{ source_dir }}"
+      register: npm_result
+    - name: "npm run build:prod task output"
+      debug:
+        var: npm_result
+    - name: "compress dist"
+      archive:
+        path: "{{ source_dir }}/dist-prod"
+        dest: frontend.tar.gz
+        format: gz

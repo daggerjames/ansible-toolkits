@@ -1,0 +1,5 @@
+---
+newdoris_filepath: /home/doris_ansible/PALO-0.15.3-release-binary.tar.gz
+newdoris_destpath: /home/doris_ansible
+newdoris_home: /home/doris_ansible/PALO-0.15.3-release-binary
+java_home: /usr/java/jdk1.8.0_131

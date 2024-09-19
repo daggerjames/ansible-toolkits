@@ -1,0 +1,65 @@
+---
+- name: build yudao-cloud
+  hosts: 127.0.0.1
+  connection: local
+  become: true
+  vars_files:
+    - ./conf.yml
+  tasks:
+    # clone directory use mvn install
+    - name: Running mvn clean
+      shell:
+        cmd: mvn package '-Dmaven.test.skip=true'
+        chdir: "{{ source_dir }}"
+      register: mvn_result
+    - name: "mvn clean task output"
+      debug:
+        var: mvn_result
+    - name: check tmp dist exists
+      file:
+        path: "{{ backend_dist_dir }}"
+        state: directory
+    - name: Test Find
+      find:
+        paths: "{{ source_dir }}"
+        file_type: file
+        recurse: yes
+        patterns: ["*.jar"]
+      register: find_list
+    - name: list Find result
+      debug:
+        var: find_list
+    - name: set path
+      set_fact:
+        path_file: "{{ find_list.files | map(attribute='path') | list }}"
+    - name: "compress jar to dist"
+      copy:
+        src: "{{ item }}"
+        dest: "{{ backend_dist_dir }}"
+      loop: "{{ path_file }}"
+    - name: check dist properties exists
+      file:
+        path: "{{ backend_dist_dir }}/properties"
+        state: directory
+    - name: "move all perperties"
+      template:
+        src: "{{ item }}"
+        dest: "{{ backend_dist_dir }}/properties/{{ item | basename | regex_replace('\\.j2$', '') }}"
+      with_fileglob:
+        - ./properties/*.j2
+    - name: check dist services exists
+      file:
+        path: "{{ backend_dist_dir }}/services"
+        state: directory
+    - name: "move all services"
+      template:
+        src: "{{ item }}"
+        dest: "{{ backend_dist_dir }}/services/{{ item | basename | regex_replace('\\.j2$', '') }}"
+      with_fileglob:
+        - ./services/*.j2
+    - name: "create tar"
+      archive:
+        path: "{{ backend_dist_dir }}"
+        dest: backend.tar.gz
+        format: gz
+    

@@ -1,0 +1,82 @@
+---
+- hosts: "{{ cluster }}.doris_hosts"
+  remote_user: root
+  vars_files:
+    - ../conf/upgrade_vars.yml
+  tasks:
+    - name:  decompress new Doris Software packages
+      unarchive:
+        src: "{{ newdoris_filepath }}"
+        dest: "{{ newdoris_destpath }}"
+        copy: yes
+
+    - name: export java home for start_fe
+      lineinfile: 
+        path: "{{ newdoris_home }}/fe/bin/start_fe.sh"
+        insertafter: "# java"
+        line: "export JAVA_HOME={{ java_home }}"
+    - name: export java home for broker
+      lineinfile:
+        path: "{{ newdoris_home }}/apache_hdfs_broker/bin/start_broker.sh"
+        insertafter: "# java"
+        line: "export JAVA_HOME={{ java_home }}"
+      ignore_errors: true
+
+- hosts: "{{ cluster }}.backends"
+  remote_user: root
+  vars_files:
+    - ../conf/upgrade_vars.yml
+    - ../conf/setup_vars.yml
+  tasks:
+    - name: update backends
+      shell:
+        cmd: 
+          mv {{ newdoris_home }}/be/conf/be.conf {{ newdoris_home }}/be/conf/new_be.conf &&
+          sh {{ doris_home }}/be/bin/stop_be.sh &&
+          sleep 2 &&
+          cp -r {{ newdoris_home }}/be {{ doris_home }}/be/../ && 
+          sh {{ doris_home }}/be/bin/start_be.sh --daemon
+- hosts: "{{ cluster }}.brokers"
+  remote_user: root
+  vars_files:
+    - ../conf/upgrade_vars.yml
+    - ../conf/setup_vars.yml
+  tasks:
+    - name: update brokers
+      shell: 
+        cmd: 
+          mv {{ newdoris_home }}/apache_hdfs_broker/conf/apache_hdfs_broker.conf {{ newdoris_home }}/apache_hdfs_broker/conf/new_apache_hdfs_broker.conf &&
+          sh {{ doris_home }}/apache_hdfs_broker/bin/stop_broker.sh &&
+          sleep 2 &&
+          cp -r {{ newdoris_home }}/apache_hdfs_broker {{ doris_home }}/apache_hdfs_broker/../ &&
+          sh {{ doris_home }}/apache_hdfs_broker/bin/start_broker.sh --daemon 
+      ignore_errors: true
+      
+- hosts: "{{ cluster }}.follower"
+  remote_user: root
+  vars_files:
+    - ../conf/upgrade_vars.yml
+    - ../conf/setup_vars.yml
+  tasks:
+    - name:
+      shell:
+        cmd:  
+          mv {{ newdoris_home }}/fe/conf/fe.conf {{ newdoris_home }}/fe/conf/new_fe.conf &&
+          sh {{ doris_home }}/fe/bin/stop_fe.sh &&
+          sleep 2 &&
+          cp -r {{ newdoris_home }}/fe {{ doris_home }}/fe/../ &&
+          sh {{ doris_home }}/fe/bin/start_fe.sh --daemon
+- hosts: "{{ cluster }}.master"
+  remote_user: root
+  vars_files:
+    - ../conf/upgrade_vars.yml
+    - ../conf/setup_vars.yml
+  tasks:
+    - name:
+      shell:
+        cmd: 
+          mv {{ newdoris_home }}/fe/conf/fe.conf {{ newdoris_home }}/fe/conf/new_fe.conf &&
+          sh {{ doris_home }}/fe/bin/stop_fe.sh &&
+          sleep 2 &&
+          cp -r {{ newdoris_home }}/fe {{ doris_home }}/fe/../ &&
+          sh {{ doris_home }}/fe/bin/start_fe.sh --daemon 

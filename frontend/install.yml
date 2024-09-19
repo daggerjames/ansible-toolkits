@@ -1,0 +1,41 @@
+---
+- hosts: "toolkits_frontend"
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: check if source file exists
+      local_action:
+        module: stat
+        path: frontend.tar.gz
+      register: is_exists
+      failed_when: not is_exists.stat.exists
+    - name: check if we do not need unarchive
+      stat:
+        path: "{{ frontend_dir }}"
+      register: dir_exists
+    - name: create dir
+      when: not dir_exists.stat.exists
+      file:
+        path: "{{ frontend_dir }}"
+        state: directory
+    - name: distribution
+      when: not dir_exists.stat.exists
+      ansible.builtin.unarchive:
+        src: "frontend.tar.gz"
+        dest: "{{ frontend_dir }}"
+        extra_opts: ["--strip-components=1", "--show-stored-names"]
+    - name: check if nginx is ready
+      yum:
+        name:
+          - nginx
+        state: present
+    - name: update nginx.conf
+      template:
+        src: "toolkits.conf.j2"
+        dest: "/etc/nginx/conf.d/toolkits.conf"
+    - name: restart/start nginx
+      ansible.builtin.systemd_service:
+        state: restarted
+        name: nginx
+        enabled: true
+

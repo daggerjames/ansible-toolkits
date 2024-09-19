@@ -1,0 +1,7 @@
+---
+follower: []
+backends: []
+brokers: []
+master: 192.168.1.1
+fe_ip_conf: 192.168.1.0/24
+be_ip_conf: 192.168.1.0/24

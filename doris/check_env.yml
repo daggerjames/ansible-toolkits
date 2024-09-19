@@ -1,0 +1,49 @@
+---
+- hosts: "doris_*"
+  remote_user: root
+  tasks:
+  - name: check java
+    shell: java -version
+    register: java_res
+    ignore_errors: true
+  - name: no java
+    debug: msg="java is not configured"
+    when: java_res is failure
+
+- hosts: "doris_master"
+  remote_user: root
+  tasks:
+  - name: Pre-install
+    yum:
+      name:
+        - mysql
+  - name: check mysql client
+    shell: whereis mysql |grep mysql
+    register: mysql_res
+    ignore_errors: true
+  - name: no mysql client
+    debug: msg="mysql-client is not configured"
+    when: mysql_res is failure
+
+- hosts: "doris_backends"
+  remote_user: root
+  tasks:
+  - name: check avx2
+    shell: cat /proc/cpuinfo |grep avx2
+    register: avx2_res
+    ignore_errors: true
+  - name: no avx2
+    debug: msg="cpu not supported avx2"
+    when: avx2_res is failure
+  # 设置系统最大文件句柄数和内存区域数量
+  - name: modify nofile soft and hard
+    community.general.pam_limits:
+      domain: root
+      limit_type: "-"
+      limit_item: nofile
+      value: 1000000
+  - name: modify vm max_map_count
+    ansible.posix.sysctl:
+      name: vm.max_map_count
+      value: '2000000'
+      state: present

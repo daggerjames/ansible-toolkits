@@ -1,0 +1,18 @@
+[Unit]
+Description=Gateway Service
+After=syslog.target network.target
+
+[Service]
+SuccessExitStatus=143
+
+User=root
+Group=root
+
+Type=simple
+
+WorkingDirectory={{backend_dir}}
+ExecStart=java -jar yudao-gateway.jar --spring.config.additional-location={{backend_dir}}/properties/
+ExecStop=/bin/kill -15 $MAINPID
+
+[Install]
+WantedBy=multi-user.target

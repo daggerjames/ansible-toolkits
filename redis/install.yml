@@ -1,0 +1,37 @@
+- name: Install Redis
+  hosts: redis_hosts[0]
+  become: true
+  vars_files:
+    - ./conf.yml
+  tasks:
+    - name: check yum installed redis
+      yum:
+        name:
+          - redis
+        state: present
+    - name: insure redis_dir
+      file:
+        path: "{{ redis_dir }}"
+        state: directory
+        owner: redis
+        group: redis
+    - name: update redis.conf
+      template:
+        src: "redis.conf.j2"
+        dest: "{{redis_dir}}/redis.cnf"
+        owner: redis
+        group: redis
+    - name: update redis.service
+      template:
+        src: "redis.service.j2"
+        dest: "/usr/lib/systemd/system/redis.service"
+        mode: '0644'
+        owner: root
+        group: root
+    - name: start redis
+      ansible.builtin.systemd_service:
+        state: started
+        daemon_reload: true
+        name: redis
+    
+    

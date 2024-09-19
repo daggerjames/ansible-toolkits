@@ -1,0 +1,24 @@
+---
+mysql:
+  db_name: ruoyi_test
+  db_sql_path: /root/yudao-cloud/sql/mysql/ruoyi-vue-pro.sql
+  user: ruoyi
+  password: ruoyi_passwd
+  master:
+    host: 192.168.10.233
+    port: 3306
+  slave:
+    host: 192.168.10.234
+    port: 3306
+nacos:
+  host: 192.168.10.234
+  port: 8848
+  namespace: dev
+redis:
+  host: 192.168.10.232
+  port: 6379
+  database: 0
+  password: 
+source_dir: /root/yudao-cloud
+backend_dist_dir: /tmp/backend_dist
+backend_dir: /opt/toolkits/backend
