@@ -1,0 +1,82 @@
+- name: Install Docker on ubuntu
+  hosts: servers
+  become: true
+  tasks:
+    - name: Install required dependencies
+      apt:
+        name:
+          - apt-transport-https 
+          - ca-certificates 
+          - curl 
+          - software-properties-common
+          - gnupg
+          # - java-11-openjdk-headless
+          # - python3-libselinux
+        state: present
+      async: 1000
+      poll: 0
+      register: apt_sleeper
+    - name: Apt - check on async task
+      async_status:
+        jid: "{{ apt_sleeper.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 30
+    - name: install GPG keys
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu \
+          "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+        tee /etc/apt/sources.list.d/docker.list > /dev/null
+    - name: Install docker dependencies
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce 
+          - docker-ce-cli 
+          - containerd.io 
+          - docker-buildx-plugin 
+          - docker-compose-plugin
+        state: present
+      async: 1000
+      poll: 0
+      register: apt_docker_sleeper
+    - name: Apt - check on async task
+      async_status:
+        jid: "{{ apt_docker_sleeper.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 30
+    # disable selinux
+    # - name: Disable selinux
+    #   ansible.posix.selinux:
+    #     state: disabled
+    # disable firewalld
+    # - name: firewalld disabled
+    #   service:
+    #     name: firewalld
+    #     state: stopped
+    #     enabled: false
+    # disable swap
+    # - name: Disable SWAP (1/2)
+    #   shell: |
+    #     swapoff -a
+    # - name: Disable SWAP in fstab (2/2)
+    #   replace:
+    #     path: /etc/fstab
+    #     regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    #     replace: '# \1'
+    # disable swap
+
+    - name: Enable the Docker service
+      systemd:
+        name: docker
+        enabled: yes
+
+    - name: Start the Docker service
+      systemd:
+        name: docker
+        state: started
