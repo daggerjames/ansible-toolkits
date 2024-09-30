@@ -1,0 +1,6 @@
+---
+base_path: /opt/test-xdso
+base_data_path: /opt/test-xdso/data
+
+# mysql 
+mysql_path: ${base_path}/mysql
