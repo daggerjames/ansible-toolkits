@@ -24,6 +24,8 @@ ansible-galaxy collection install -r requirements.yml
 ansible-playbook -i hosts preinstall.yml
 ```
 
+### 部署第三方依赖
+
 ### Doris 相关
 ```
 # 修改需要规划的配置文件，包括
