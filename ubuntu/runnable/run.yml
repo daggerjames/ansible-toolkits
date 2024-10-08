@@ -4,14 +4,27 @@
   vars_files:
     - ../vars.yml
   tasks:
+    - name: check dir exists
+      file:
+        path: "{{ item }}"
+        state: directory
+      with_items:
+        - "{{ base_path }}"
+        - "{{ nacos_path }}"
+        - "{{ redis_path }}"
+      ignore_errors: true
     - name: upload docker-compose file
       template:
         src: "docker-compose.yml.j2"
-        dest: "{{base_path}}/docker-compose.yml"
+        dest: "{{ base_path }}/docker-compose.yml"
     - name: upload nacos configuration files
       template:
         src: "nacos/application.properties.j2"
-        dest: "{{nacos_path}}/application.properties"
+        dest: "{{ nacos_path }}/application.properties"
+    - name: upload redis configuration files
+      template:
+        src: "redis/redis.conf.j2"
+        dest: "{{ redis_path }}/redis.conf"
     - name: create and start services
       community.docker.docker_compose_v2:
         project_src: "{{ base_path }}"

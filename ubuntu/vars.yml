@@ -7,6 +7,12 @@ base_logs_path: "{{ base_path }}/logs"
 mysql_path: "{{ base_path }}/mysql"
 mysql_data_path: "{{ base_data_path }}/mysql"
 mysql_root_password: P@ssw0rd
+
+# redis
+redis_path: "{{ base_path }}/redis"
+redis_data_path: "{{ base_data_path }}/redis"
+redis_logs_path: "{{ base_logs_path }}/redis"
+
 # nacos
 nacos_version: v2.4.2.1
 nacos_path: "{{ base_path }}/nacos"
