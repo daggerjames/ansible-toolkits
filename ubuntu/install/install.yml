@@ -1,0 +1,58 @@
+- name: install and setup database on servers
+  hosts: "mysql_hosts"
+  gather_facts: false
+  vars_files:
+    - ../vars.yml
+  tasks:
+    - name: Create template network
+      docker_network:
+        name: "initialization-network"
+    - name: start mysql server container and waiting for initialization
+      docker_container:
+        name: mysql-initialization-container
+        image: mysql:8.0.39-debian
+        volumes:
+          - "{{ mysql_data_path }}:/var/lib/mysql"
+        networks:
+          - name: "initialization-network"
+        healthcheck:
+          test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+          interval: 5s
+          timeout: 10s
+          retries: 10
+    # nacos
+    - name: check dir exists
+      file:
+        path: "{{ nacos_path }}"
+        state: directory
+    - name: upload init files for nacos
+      copy:
+        src: "nacos/"
+        dest: "{{ nacos_path }}"
+        directory_mode: 'preserve'
+        mode: 'preserve'
+    - name: run mysql client to initialize database for nacos
+      docker_container:
+        name: nacos-initialization-container
+        image: mysql:8.0.39-debian
+        command: "bash -c /init.sh"
+        detach: false
+        volumes:
+          - "{{ nacos_path }}/init.sh:/init.sh"
+          - "{{ nacos_path }}/mysql-schema.sql:/init_data.sql"
+        env:
+          MYSQL_ROOT_PASSWORD: 'P@ssw0rd'
+          MYSQL_HOST: 'mysql'
+          DATABASE_NAME: "{{ nacos_mysql.database }}"
+          NEW_USER: "{{ nacos_mysql.user }}"
+          NEW_USER_PASSWORD: "{{ nacos_mysql.password }}"
+        networks:
+          - name: "initialization-network"
+            links:
+              - mysql-initialization-container:mysql
+      register: nacos_initialization_result 
+    - name: stop mysql server after we initialized requested sql
+      docker_container:
+        name: mysql-initialization-container
+        state: stopped
+      when: nacos_initialization_result is succeeded

@@ -1,7 +1,18 @@
 ---
 base_path: /opt/test-xdso
-base_data_path: /opt/test-xdso/data
+base_data_path: "{{ base_path }}/data"
+base_logs_path: "{{ base_path }}/logs"
 
 # mysql 
 mysql_path: "{{ base_path }}/mysql"
 mysql_data_path: "{{ base_data_path }}/mysql"
+mysql_root_password: P@ssw0rd
+# nacos
+nacos_version: v2.4.2.1
+nacos_path: "{{ base_path }}/nacos"
+nacos_logs_path: "{{ base_logs_path }}/nacos"
+nacos_mysql:
+  database: nacos
+  user: nacos
+  password: nacos_passwd
+  host: mysql

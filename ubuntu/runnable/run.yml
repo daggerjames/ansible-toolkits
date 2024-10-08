@@ -8,6 +8,10 @@
       template:
         src: "docker-compose.yml.j2"
         dest: "{{base_path}}/docker-compose.yml"
+    - name: upload nacos configuration files
+      template:
+        src: "nacos/application.properties.j2"
+        dest: "{{nacos_path}}/application.properties"
     - name: create and start services
       community.docker.docker_compose_v2:
         project_src: "{{ base_path }}"
