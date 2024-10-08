@@ -1,0 +1,17 @@
+- name: start docker-compose on servers
+  hosts: servers
+  gather_facts: false
+  vars_files:
+    - ../vars.yml
+  tasks:
+    - name: upload docker-compose file
+      template:
+        src: "docker-compose.yml.j2"
+        dest: "{{base_path}}/docker-compose.yml"
+    - name: create and start services
+      community.docker.docker_compose_v2:
+        project_src: "{{ base_path }}"
+      register: output
+    - name: show results
+      debug:
+        var: output

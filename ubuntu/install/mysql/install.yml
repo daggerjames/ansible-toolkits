@@ -1,12 +1,12 @@
 ---
 - hosts: "mysql_hosts"
   vars_files:
-    - ../vars.yml
+    - ../../vars.yml
   tasks:
     - name: upload mysql init-only-entry
       copy:
         src: "init-only-entry.sh"
-        dst: "{{ mysql_path }}"
+        dest: "{{ mysql_path }}"
     - name: init mysql
       docker_container:
         name: mysql-initializer
@@ -15,6 +15,5 @@
         env:
           MYSQL_ROOT_PASSWORD: 'P@ssw0rd'
         volumes:
-          # - /opt/test-xdso/mysql/init.d:/docker-entrypoint-initdb.d
-          - "{{ mysql_path }}/init-only-entry.sh":/usr/local/bin/init-only-entry.sh
-          - "{{ mysql_data_path }}":/var/lib/mysql
+          - "{{ mysql_path }}/init-only-entry.sh:/usr/local/bin/init-only-entry.sh"
+          - "{{ mysql_data_path }}:/var/lib/mysql"

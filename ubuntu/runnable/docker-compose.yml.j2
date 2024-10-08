@@ -1,0 +1,7 @@
+# docker-compose.yaml file to start all xdso-related containers in one compose
+services:
+  mysql:
+    restart: always
+    image: mysql:8.0.39-debian
+    volumes:
+      - "{{ mysql_data_path }}:/var/lib/mysql"
