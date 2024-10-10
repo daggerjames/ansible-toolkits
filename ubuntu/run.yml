@@ -1,0 +1,45 @@
+- name: start docker-compose on servers
+  hosts: servers
+  gather_facts: false
+  vars_files:
+    - ./vars.yml
+  tasks:
+    - name: Find template files
+      local_action:
+        module: find
+        paths: ./runnable
+        patterns: '*.j2'
+        file_type: 'file'
+        recurse: yes
+      register: found_template_files
+    - name: Render templates
+      local_action:
+        module: template
+        src: "{{ item.path }}"
+        dest: "{{ item.path | replace('.j2', '') }}"
+      with_items: "{{ found_template_files.files }}"
+    - name: Ensure destination directory exists
+      file:
+        path: "{{ base_path }}"
+        state: directory
+    - name: Synchronize template files
+      synchronize:
+        src: ./runnable/
+        dest: "{{ base_path }}"
+        recursive: yes
+        rsync_opts:
+          - "--exclude='*.j2'"
+          - "--copy-links"
+    # make sure es_data has appropriate mode
+    - name: change data mode for es
+      file:
+        path: "{{ elasticsearch_data_path }}"
+        state: directory
+        mode: "0775"
+    - name: create and start services
+      community.docker.docker_compose_v2:
+        project_src: "{{ base_path }}"
+      register: output
+    - name: show results
+      debug:
+        var: output

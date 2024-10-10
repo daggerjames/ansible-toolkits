@@ -22,3 +22,16 @@ nacos_mysql:
   user: nacos
   password: nacos_passwd
   host: mysql
+
+# elasticsearch
+elastic_stack_version: 8.15.2
+elasticsearch_mem_limit: 1GB
+elasticsearch_path: "{{ base_path }}/elasticsearch"
+elasticsearch_data_path: "{{ base_data_path }}/elasticsearch"
+elasticsearch_logs_path: "{{ base_logs_path }}/elasticsearch"
+elasticsearch_password: P@ssw0rd
+
+# kibana
+kibana_path: "{{ base_path }}/kibana"
+kibana_data_path: "{{ base_data_path }}/kibana"
+kibana_password: P@ssw0rd

@@ -60,23 +60,39 @@
     #     name: firewalld
     #     state: stopped
     #     enabled: false
-    # disable swap
-    # - name: Disable SWAP (1/2)
-    #   shell: |
-    #     swapoff -a
-    # - name: Disable SWAP in fstab (2/2)
-    #   replace:
-    #     path: /etc/fstab
-    #     regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
-    #     replace: '# \1'
-    # disable swap
-
     - name: Enable the Docker service
       systemd:
         name: docker
         enabled: yes
-
     - name: Start the Docker service
       systemd:
         name: docker
         state: started
+
+- name: Configure ES Node
+  hosts: es_hosts
+  tags:
+    - es_preinstall
+  become: true
+  tasks:
+    # 设置系统最大文件句柄数和内存区域数量
+    - name: modify nofile soft and hard
+      community.general.pam_limits:
+        domain: root
+        limit_type: "-"
+        limit_item: nofile
+        value: 1000000
+    - name: modify vm max_map_count
+      ansible.posix.sysctl:
+        name: vm.max_map_count
+        value: '2000000'
+        state: present
+    #disable swap
+    - name: Disable SWAP (1/2)
+      shell: |
+        swapoff -a
+    - name: Disable SWAP in fstab (2/2)
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'

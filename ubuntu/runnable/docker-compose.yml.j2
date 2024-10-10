@@ -38,3 +38,72 @@ services:
       interval: 5s
       timeout: 3s
       retries: 3
+  
+#  elastic_setup:
+#    image: "docker.elastic.co/elasticsearch/elasticsearch:{{ elastic_stack_version }}"
+#    container_name: elasticsearch_setup
+#    mem_limit: {{ elasticsearch_mem_limit }}
+#    volumes:
+#      - "{{ elasticsearch_path }}/setup.sh:/usr/share/elasticsearch/setup.sh"
+#    user: "0"
+#    command: bash -c /usr/share/elasticsearch/setup.sh
+#    environment:
+#      - KIBANA_PASSWORD={{ kibana_password }}
+#      - ELASTIC_PASSWORD={{ elasticsearch_password }}
+#    healthcheck:
+#      test: ["CMD-SHELL", "[ -f config/certs/es01/es01.crt ]"]
+#      interval: 1s
+#      timeout: 5s
+#      retries: 120
+  elasticsearch:
+#    depends_on:
+#      elastic_setup:
+#        condition: service_healthy
+    container_name: elasticsearch
+    image: "docker.elastic.co/elasticsearch/elasticsearch:{{ elastic_stack_version }}"
+    volumes:
+      - "{{ elasticsearch_path }}/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml"
+      - "{{ elasticsearch_data_path }}:/usr/share/elasticsearch/data"
+    #ports:
+    #  - ${ES_PORT}:9200
+    environment:
+      - node.name=elasticsearch_standalone
+      - cluster.initial_master_nodes=elasticsearch_standalone
+      - ELASTIC_PASSWORD={{ elasticsearch_password }}
+    mem_limit: {{ elasticsearch_mem_limit }}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200 | grep -q 'You Know, for Search'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+  kibana:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    container_name: kibana
+    image: "docker.elastic.co/kibana/kibana:{{ elastic_stack_version }}"
+    volumes:
+      - "{{ kibana_data_path }}:/usr/share/kibana/data"
+    ports:
+      - 5601:5601
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    mem_limit: {{ elasticsearch_mem_limit }}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120

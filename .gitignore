@@ -1,1 +1,4 @@
 hosts
+ubuntu/runnable/nacos/application.properties
+ubuntu/runnable/redis/redis.conf
+ubuntu/runnable/docker-compose.yml
